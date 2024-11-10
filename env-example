@@ -1,0 +1,6 @@
+HOST="localhost"
+PORT=8070
+DB_USER="postgres"
+DB_PASSWORD="postgres"
+DB_NAME="benchmarking"
+API_VERSION="v1"
