@@ -100,5 +100,11 @@ func setupDatabase() (*sqlx.DB, error) {
 		return nil, err
 	}
 
+	// Set the maximum number of open connections
+	db.SetMaxOpenConns(25) // Adjust as needed, depending on your PostgreSQL config
+	db.SetMaxIdleConns(25)  // Control idle connections
+	db.SetConnMaxLifetime(0) // No limit, or set a duration like time.Minute * 5
+
+
 	return db, nil
 }
