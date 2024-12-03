@@ -10,8 +10,6 @@ Because Go is awesome. And will serve more requests per dollar than most other l
 
 - A justfile with commands for most operations
 - Database migrations
-- Testing for endpoints
-- Swagger documentation for the API
 - Project structure for a web application
 - A parser for filter params to construct dynamic SQL queries without needing an ORM or a query builder
 - Keeping it simple
