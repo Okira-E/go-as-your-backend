@@ -12,7 +12,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/org/example/internal/server/handlers"
+	"github.com/org/example/internal/server_health"
+	"github.com/org/example/internal/system_users"
 )
 
 func main() {
@@ -45,14 +46,14 @@ func main() {
 	// If you want to setup a project-wide basice auth on every endpoint.
 	// You could also do bearer auth here.
 	/*
-	app.Use(basicauth.New(basicauth.Config{
-	    Users: map[string]string{
-	        "john":  "doe",
-	        "admin": "123456",
-	    },
-	}))
+		app.Use(basicauth.New(basicauth.Config{
+		    SystemUsers: map[string]string{
+		        "john":  "doe",
+		        "admin": "123456",
+		    },
+		}))
 	*/
-	
+
 	// Setup logging
 	mode := os.Getenv("ENV")
 	if mode == "debug" {
@@ -64,8 +65,7 @@ func main() {
 	}
 	fmt.Printf("Running in %s mode.\n", mode)
 
-	// Setup routes.
-	handlers.SetupHandlers(app, db)
+	setupRoutes(app, db)
 
 	// Run server.
 	port := os.Getenv("PORT")
@@ -101,10 +101,23 @@ func setupDatabase() (*sqlx.DB, error) {
 	}
 
 	// Set the maximum number of open connections
-	db.SetMaxOpenConns(25) // Adjust as needed, depending on your PostgreSQL config
-	db.SetMaxIdleConns(25)  // Control idle connections
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)   // Control idle connections
 	db.SetConnMaxLifetime(0) // No limit, or set a duration like time.Minute * 5
 
-
 	return db, nil
+}
+
+func setupRoutes(app *fiber.App, db *sqlx.DB) {
+	version := os.Getenv("API_VERSION")
+	if version == "" {
+		log.Fatalln("API_VERSION environment variable is not set.")
+	}
+
+	api := app.Group("/api/" + version)
+
+	server_health.SetupHandlers(api)
+	
+	system_users.InitConfig(db)
+	system_users.SetupHandlers(api)
 }

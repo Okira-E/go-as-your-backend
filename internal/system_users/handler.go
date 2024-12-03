@@ -1,24 +1,22 @@
-package handlers
+package system_users
 
 import (
 	"encoding/json"
+	"github.com/org/example/internal/utils"
 	"log"
 	"net/url"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jinzhu/copier"
-	"github.com/org/example/internal/server/features"
-	"github.com/org/example/internal/server/models"
-	"github.com/org/example/internal/server/utils"
 )
 
-func usersHandler(api fiber.Router) {
-	path := "/users"
+func SetupHandlers(api fiber.Router) {
+	api = api.Group("/users")
 
-	api.Get(path, getUsers)
-	api.Post(path, registerUser)
-	api.Delete(path+"/:id", deleteUser)
+	api.Get("/", getUsers)
+	api.Post("/", registerUser)
+	api.Delete("/:id", deleteUser)
 }
 
 // Example usage: "http://localhost:3200?filter={\"where\": {\"id\": \"123-456-789\"}, \"order_by\": [\"created_by\"]}&limit=50&offset=10"
@@ -31,7 +29,7 @@ func getUsers(c *fiber.Ctx) error {
 
 	queryParams := path.Query()
 
-	usersDto, err := features.GetAllUsers(datasource, queryParams)
+	usersDto, err := GetAllUsers(config.datasource, queryParams)
 	if err != nil {
 		return utils.Err(c, 500, "Error fetching users. "+err.Error(), nil)
 	}
@@ -41,7 +39,7 @@ func getUsers(c *fiber.Ctx) error {
 
 func registerUser(c *fiber.Ctx) error {
 	payload := struct {
-		models.UsersDto
+		SystemUsersDto
 
 		Password string `json:"password" validate:"required"`
 	}{}
@@ -58,27 +56,30 @@ func registerUser(c *fiber.Ctx) error {
 		return utils.Err(c, 400, "Request body is not valid. "+err.Error(), nil)
 	}
 
-	var userDto models.UsersDto
-	copier.Copy(&userDto, &payload.UsersDto)
-
-	err = features.CreateUser(datasource, payload.UsersDto, payload.Password)
+	var userDto SystemUsersDto
+	err = copier.Copy(&userDto, &payload.SystemUsersDto)
 	if err != nil {
-		return utils.Err(c, 500, "Error creating user. "+err.Error(), nil)
+		return utils.Err(c, 500, "Encountered an error while constructing the object to save. "+err.Error(), nil)
 	}
 
-	return utils.Ok(c, 201, "User created successfully.", nil)
+	insertedUser, status, err := CreateUser(config.datasource, payload.SystemUsersDto, payload.Password)
+	if err != nil {
+		return utils.Err(c, status, "Error creating user. "+err.Error(), nil)
+	}
+
+	return utils.Ok(c, status, "User created successfully.", insertedUser)
 }
 
 func deleteUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
-		return utils.Err(c, 400, "User ID is required.", nil)
+		return utils.Err(c, 400, "Entity ID is required.", nil)
 	}
 
-	err := features.DeleteUser(datasource, id)
+	err := DeleteUser(config.datasource, id)
 	if err != nil {
-		return utils.Err(c, 500, "Error deleting user. "+err.Error(), nil)
+		return utils.Err(c, 500, "Error deleting entity. "+err.Error(), nil)
 	}
 
-	return utils.Ok(c, 200, "User deleted successfully.", nil)
+	return utils.Ok(c, 200, "Entity deleted successfully.", nil)
 }

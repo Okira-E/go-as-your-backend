@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/org/example/opt"
@@ -104,71 +103,5 @@ func ParseFilterClause(params url.Values) (opt.Option[Filter], error) {
 	}
 
 	return opt.Some(filterObj), nil
-}
-
-func ParseQuery(table string, limit int, offset int, filter opt.Option[Filter]) (string, []any) {
-	query := "SELECT * FROM " + table
-	var args []any
-
-	if filter.IsSome() {
-		f := filter.Unwrap()
-		andClauses := []string{}
-		orClauses := []string{}
-		argIndex := 1
-
-		for key, value := range f.Where.And {
-			if strings.Contains(string(value.(string)), "%") {
-				andClauses = append(andClauses, key+" LIKE $"+fmt.Sprint(argIndex))
-			} else {
-				andClauses = append(andClauses, key+" = $"+fmt.Sprint(argIndex))
-			}
-
-			args = append(args, value)
-			argIndex++
-		}
-
-		for key, value := range f.Where.Or {
-			if strings.Contains(string(value.(string)), "%") {
-				orClauses = append(orClauses, key+" LIKE $"+fmt.Sprint(argIndex))
-			} else {
-				orClauses = append(orClauses, key+" = $"+fmt.Sprint(argIndex))
-			}
-
-			args = append(args, value)
-			argIndex++
-		}
-
-		if len(andClauses) > 0 || len(orClauses) > 0 {
-			query += " WHERE "
-		}
-
-		if len(andClauses) > 0 {
-			query += "("
-			query += strings.Join(andClauses, " AND ")
-			query += ")"
-		}
-
-		if len(orClauses) > 0 {
-			if len(andClauses) > 0 {
-				query += " OR "
-			}
-
-			query += "("
-			query += strings.Join(orClauses, " OR ")
-			query += ")"
-		}
-
-		if len(f.GroupBy) > 0 {
-			query += " GROUP BY " + strings.Join(f.GroupBy, ", ")
-		}
-		if len(f.OrderBy) > 0 {
-			query += " ORDER BY " + strings.Join(f.OrderBy, ", ")
-		}
-	}
-
-	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)+1, len(args)+2)
-	args = append(args, limit, offset)
-
-	return query, args
 }
 
